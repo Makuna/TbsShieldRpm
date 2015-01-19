@@ -12,6 +12,24 @@ TbsShieldRpm KEYWORD1
 # Methods and Functions (KEYWORD2)
 #######################################
 
+Setup	KEYWORD2
+ReadSamples	KEYWORD2
+ReadSamplesCycle	KEYWORD2
+ClearSamples	KEYWORD2
+CalibrateCyclesWithSamples	KEYWORD2
+CalibrateAtZeroWithSamples	KEYWORD2
+SampleMinKpa100	KEYWORD2
+SampleMaxKpa100	KEYWORD2
+SampleAverageKpa100	KEYWORD2
+SampleForCycleReady	KEYWORD2
+SampleWidth	KEYWORD2
+SampleMin	KEYWORD2
+SampleMax	KEYWORD2
+SampleAverage	KEYWORD2
+
 #######################################
 # Constants (LITERAL1)
 #######################################
+
+kPa1000PerAdcUnit	LITERAL1
+adcOffset	LITERAL1

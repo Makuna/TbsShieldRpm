@@ -7,11 +7,11 @@
 // use pattern for cycle read:
 //if (ReadSamplesCycles())
 //{
-//	for (int index = 0; index < ChannelCount; index++)
+//	for (uint8_t index = 0; index < ChannelCount; index++)
 //	{
 //		if (SampleForCycleReady(index))
 //		{
-//			int value = SampleAverageKpa100(index);
+//			int16_t value = SampleAverageKpa100(index);
 //		}
 //	}
 //}
@@ -27,19 +27,23 @@
 class TbsShieldRpm
 {
 public:
-	const static int ChannelCount = 4;
-	const static unsigned long kPa1000PerAdcUnit = 54; // 0.05425347 per ADC unit;
-	const static int adcOffset = 20; // 0.1v-4.6v, 
+	const static uint32_t kPa1000PerAdcUnit = 54; // 0.05425347 per ADC unit;
+	const static uint16_t adcOffset = 20; // 0.1v-4.6v, 
 
-	TbsShieldRpm();
+	TbsShieldRpm( uint8_t channelCount );
 
 	void Setup();
+
+    uint8_t ChannelCount() const
+    {
+        return m_channelCount;
+    }
 
 	void ReadSamples()
 	{
 		ReadAllSamples(true);
 	}
-	int ReadSamplesCycle()
+    uint8_t ReadSamplesCycle()
 	{
 		return ReadAllSamples(false);
 	}
@@ -49,37 +53,37 @@ public:
 	void CalibrateAtZeroWithSamples();
 
 
-	long SampleMinKpa100( int channel )
+	int32_t SampleMinKpa100( uint8_t channel ) const
 	{
 		return ConvertToKpa100(m_sampleCalibrate.ips[channel] - SampleMin(channel));
 	}
-	long SampleMaxKpa100( int channel )
+	int32_t SampleMaxKpa100( uint8_t channel ) const
 	{
 		return ConvertToKpa100(m_sampleCalibrate.ips[channel] - SampleMax(channel));
 	}
-	long SampleAverageKpa100( int channel )
+	int32_t SampleAverageKpa100( uint8_t channel ) const 
 	{
 		return ConvertToKpa100(m_sampleCalibrate.ips[channel] - SampleAverage(channel));
 	}
 
 	
-	bool SampleForCycleReady( int channel )
+	bool SampleForCycleReady( uint8_t channel ) const
 	{
 		return m_sampleCycle[channel].IsNewCycle;
 	}
-	int SampleWidth( int channel )
+	int SampleWidth( uint8_t channel ) const
 	{
 		return m_sampleCycle[channel].Count;
 	}
-	long SampleMin( int channel )
+	int32_t SampleMin( uint8_t channel ) const
 	{
 		return m_sampleCycle[channel].MinValue;
 	}
-	long SampleMax( int channel )
+	int32_t SampleMax( uint8_t channel ) const
 	{
 		return m_sampleCycle[channel].MaxValue;
 	}
-	long SampleAverage( int channel )
+	int32_t SampleAverage( uint8_t channel ) const
 	{
 		int count = m_sampleCycle[channel].Count;
 		if (count > 0)
@@ -93,24 +97,32 @@ private:
 	// types
 	struct Sample
 	{
-		int ips[ChannelCount];
+        Sample(uint8_t channelCount)
+        {
+            ips = new int16_t[channelCount];
+        }
+        ~Sample()
+        {
+            delete[] ips;
+        }
+		int16_t* ips;
 	};
   
 	struct SampleCycle
 	{
-		long Sum;
-		long Count;
+		int32_t Sum;
+		uint16_t Count;
 
-		int MinValue;
-		int MaxValue;
+		int16_t MinValue;
+		int16_t MaxValue;
 
-		int TopTrigger;
-		int BottomTrigger;
+		int16_t TopTrigger;
+		int16_t BottomTrigger;
 
 		bool IsWaitingOnUpCurve; // looking for samples going up
 		bool IsNewCycle;
 
-		void SetTriggers(  int top, int center, int bottom )
+		void SetTriggers(  int16_t top, int16_t center, int16_t bottom )
 		{
 			TopTrigger = center + (top - center) * 2 / 3;
 			BottomTrigger = center - (center - bottom) * 2 / 3;
@@ -128,7 +140,7 @@ private:
 			IsNewCycle = false;
 		}
 
-		void Include( int value )
+		void Include( int16_t value )
 		{
 			Sum += value;
 			Count++;
@@ -136,7 +148,7 @@ private:
 			MaxValue = max(MaxValue, value);
 		}
 
-		bool Track( int lastValue, int newValue )
+		bool Track( int16_t lastValue, int16_t newValue )
 		{
 			bool isValueReady = false;
 
@@ -175,30 +187,32 @@ private:
 	};
 
 	// members
-	long ConvertToKpa100( long adcValue )
+	int32_t ConvertToKpa100( int32_t adcValue ) const
 	{
 		// cap readings as adcValue has been offset due to calibration
 		adcValue = max(0L, min(1023L, adcValue));
-		long kPa100Value = (adcValue * kPa1000PerAdcUnit) / 10L;
+		int32_t kPa100Value = (adcValue * kPa1000PerAdcUnit) / 10L;
 		return kPa100Value;
 	}
 
 	void InitFilteringOnFirstSample(const Sample& sample);
 
-	int FastLowAmplitudeNoiseFilter(int newInputValue, int priorOutputValue);
-	int ReadAllSamples(bool isIgnoringCycles);
+	int16_t FastLowAmplitudeNoiseFilter(int16_t newInputValue, int16_t priorOutputValue) const;
+    uint8_t ReadAllSamples(bool isIgnoringCycles);
 
 	// variables
-	SampleCycle m_sampleCycle[ChannelCount];
+    const uint8_t m_channelCount;
+    
+    SampleCycle* m_sampleCycle;
 	Sample m_prevOptimal;
 	bool m_isFilteringInitialized;
 
-	int m_maxCycle;
-	int m_centerCycle;
-	int m_minCycle;
+	int16_t m_maxCycle;
+	int16_t m_centerCycle;
+	int16_t m_minCycle;
 
 	Sample m_sampleCalibrate;  // sensor reading at normal air pressure (no vacume)
-	int m_noiseMaxAmplitude; // calculated at normal air pressure
+	int16_t m_noiseMaxAmplitude; // calculated at normal air pressure
 };
 
 #endif
